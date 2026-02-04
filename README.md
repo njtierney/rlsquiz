@@ -23,7 +23,7 @@ Usage
 ------------------
 Load the package:
 
-library(rls.habitat.quiz)
+library(rlsquiz)
 
 Launch practice mode (default folder: "rls_catalogue"):
 
@@ -43,7 +43,7 @@ rls_quiz("rls_RRH", n = 20)   *this launches the Reef Repair Hub label scheme ex
 
 Adding new image folders
 ------------------
-Users can adapt this without code changes by referencing their own new top-level folder containing other labels and associated images. Requires ≥ 4 species per top-level folder, with sub-folders named as label names containing associated images. Supports jpg, jpeg, JPEG, png, webp. The folder will be automatically recognised when placed in the r package library under ...rls.habitat.quiz/app/www/photos
+Users can adapt this without code changes by referencing their own new top-level folder containing other labels and associated images. Requires ≥ 4 species per top-level folder, with sub-folders named as label names containing associated images. Supports jpg, jpeg, JPEG, png, webp. The folder will be automatically recognised when placed in the r package library under ...rlsquiz/app/www/photos
 
 eg. rls_practice("*top-level folder*")
 

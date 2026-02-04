@@ -96,13 +96,13 @@ server <- function(input, output, session) {
   }
   clear_status <- function() output$status_ui <- renderUI(NULL)
 
-  message("[rls.habitat.quiz] Using base_dir: ", base_dir)
+  message("[rlsquiz] Using base_dir: ", base_dir)
 
   # Fixed, non-reactive choice of source (decided once)
   choose_source <- function() {
     if (!dir.exists(base_dir)) return(NULL)
     srcs <- collect_sources(base_dir)
-    message("[rls.habitat.quiz] Sources found: ", paste(srcs, collapse = ", "))
+    message("[rlsquiz] Sources found: ", paste(srcs, collapse = ", "))
     if (!length(srcs)) return(NULL)
     if (!is.null(opt_default) && opt_default %in% srcs) opt_default else srcs[1]
   }
@@ -208,7 +208,7 @@ server <- function(input, output, session) {
       # pick source once
       rv$current_source <- choose_source()
       message(
-        "[rls.habitat.quiz] Using source: ",
+        "[rlsquiz] Using source: ",
         rv$current_source %||% "<none>"
       )
 
