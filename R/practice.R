@@ -11,10 +11,10 @@ rls_practice <- function(source = NULL, photos_root = NULL) {
     app_dir <- normalizePath(local_app)
   } else {
     # Fallback to installed package location once you install it
-    app_dir <- system.file("app", package = "rls.habitat.quiz")
+    app_dir <- system.file("app", package = "rlsquiz")
     if (app_dir == "") {
       stop(
-        "Could not find app in inst/app or in the installed package 'rls.habitat.quiz'"
+        "Could not find app in inst/app or in the installed package 'rlsquiz'"
       )
     }
   }
