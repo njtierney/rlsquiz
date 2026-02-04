@@ -1,0 +1,92 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# rlsquiz: A flashcard and quiz app to learn Reef Life Survey habitat labels
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of rlsquiz is to facilitate learning local habitat labels based on a set of images. Habitat images and clickable label options are presented. Optionally, users can record quiz scores or add a folder of their own images and labels to learn.
+
+This work is forked from: coralquiz by Matthew Doherty:  https://github.com/dohertyml/coralquiz. This version has been adapted to include RLS images, new folder structure, and renamed functions.
+
+## Installation
+
+You can install the development version of rlsquiz from [GitHub](https://github.com/) with:
+
+``` r
+# install.packages("pak")
+pak::pak("njtierney/rlsquiz")
+```
+
+## Example
+
+
+```{r example}
+library(rlsquiz)
+```
+
+### Practice mode
+
+Launch practice mode with `rls_practice`. The default folder for this is "rls_catalogue".  This launches the standard Reef Life Survey label scheme exemplar image set.
+
+```r
+rls_practice()
+```
+
+Launch the standard Reef Life Survey label scheme exemplar image set:
+
+```r
+rls_practice(source = "rls_catalogue")
+```
+
+Launch the Reef Repair Hub label scheme exemplar image set:
+
+```r
+rls_practice(source = "rls_RRH")
+```
+
+### Quiz mode 
+
+This launches the standard Reef Life Survey label scheme exemplar image set with 20 questions
+
+```r
+rls_quiz()
+```
+
+Use the standard Reef Life Survey label scheme exemplar image set:
+
+```r
+rls_quiz("rls_catalogue", n = 20)   
+```
+
+Use the Reef Repair Hub label scheme exemplar image set:
+
+```r
+rls_quiz("rls_RRH", n = 20)   
+```
+
+##  Adding new image folders
+
+Users can adapt this without code changes by referencing their own new top-level folder containing other labels and associated images. Requires ≥ 4 species per top-level folder, with sub-folders named as label names containing associated images. Supports jpg, jpeg, JPEG, png, webp. The folder will be automatically recognised when placed in the r package library under ...rlsquiz/app/www/photos. For example:
+
+```r
+rls_practice("*top-level folder*")
+```
+
+# Acknowledgements
+
+Original coralquiz package by Matthew Doherty
+Thanks for sharing the coralquiz framework that we adapted for Reef Life Survey habitats.
