@@ -5,3 +5,5 @@
 ^^\\.gitignore$$
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^[.]?air[.]toml$
+^\.vscode$

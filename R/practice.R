@@ -5,7 +5,6 @@
 #'
 #' @export
 rls_practice <- function(source = NULL, photos_root = NULL) {
-
   # Use local app in development (inst/app)
   local_app <- file.path("inst", "app")
   if (file.exists(file.path(local_app, "app.R"))) {
@@ -14,14 +13,16 @@ rls_practice <- function(source = NULL, photos_root = NULL) {
     # Fallback to installed package location once you install it
     app_dir <- system.file("app", package = "rls.habitat.quiz")
     if (app_dir == "") {
-      stop("Could not find app in inst/app or in the installed package 'rls.habitat.quiz'")
+      stop(
+        "Could not find app in inst/app or in the installed package 'rls.habitat.quiz'"
+      )
     }
   }
 
   # Pass defaults to the app (using NEW option names)
-  options(rlsquiz.mode           = "practice")
+  options(rlsquiz.mode = "practice")
   options(rlsquiz.default_source = source)
-  options(rlsquiz.photos_root    = photos_root)
+  options(rlsquiz.photos_root = photos_root)
 
   shiny::runApp(app_dir, launch.browser = TRUE)
 }
