@@ -43,7 +43,7 @@ jobs:
 
       - name: Create Shinylive app
         run: |
-          shinylive::export("app", "site")
+          shinylive::export("inst/app", "site")
         shell: Rscript {0}
 
       - name: Upload artifact for GitHub Pages
