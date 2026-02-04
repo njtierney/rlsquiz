@@ -3,7 +3,8 @@
 #' Reads images from bundled `inst/app/www/photos/<source>/<species>/...`
 #' or from an external `photos_root` with the same structure.
 #' @param source Default location/project folder to use (e.g., "rls_catalogue")
-#' @param photos_root Optional external folder containing sources and species subfolders
+#' @param photos_root Optional external folder containing sources and species
+#'   subfolders
 #' @export
 rls_practice <- function(source = NULL, photos_root = NULL) {
   run_rls_app(

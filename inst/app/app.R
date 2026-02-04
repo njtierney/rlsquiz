@@ -7,7 +7,7 @@ library(tidyr)
 
 # -------- helpers --------
 valid_ext <- c("jpg", "jpeg", "png", "webp", "JPG")
-nice_species <- function(x) gsub("_", " ", x)
+nice_species <- function(x) gsub("_", " ", x, fixed = TRUE)
 
 collect_sources <- function(base_dir) {
   if (!dir.exists(base_dir)) return(character(0))

@@ -1,6 +1,6 @@
 #' Launch the RLS Habitat Quiz in practice mode
 #'
-#' @param source Optional name of the image source folder (e.g. "rls_catalogue").
+#' @param source Optional name of image source folder (e.g. "rls_catalogue").
 #' @param photos_root Optional external path overriding inst/app/www/photos.
 #'
 #' @export
