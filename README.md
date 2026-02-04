@@ -5,6 +5,9 @@
 
 <!-- badges: start -->
 
+[![R-CMD-check](https://github.com/njtierney/rlsquiz/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/njtierney/rlsquiz/actions/workflows/R-CMD-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/njtierney/rlsquiz/graph/badge.svg)](https://app.codecov.io/gh/njtierney/rlsquiz)
 <!-- badges: end -->
 
 The goal of rlsquiz is to facilitate learning local habitat labels based
