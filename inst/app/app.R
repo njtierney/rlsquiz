@@ -1,22 +1,28 @@
 # Shiny app used by coralquiz::practice() and coralquiz::quiz()
 library(shiny)
+library(bslib)
 library(stringr)
 library(purrr)
 library(dplyr)
 library(tidyr)
+library(here)
 
 # -------- helpers --------
 valid_ext <- c("jpg", "jpeg", "png", "webp", "JPG")
 nice_species <- function(x) gsub("_", " ", x, fixed = TRUE)
 
 collect_sources <- function(base_dir) {
-  if (!dir.exists(base_dir)) return(character(0))
+  if (!dir.exists(base_dir)) {
+    return(character(0))
+  }
   list.dirs(base_dir, full.names = FALSE, recursive = FALSE) |> sort()
 }
 
 collect_items <- function(base_dir, source) {
   src_dir <- file.path(base_dir, source)
-  if (!dir.exists(src_dir)) return(tibble())
+  if (!dir.exists(src_dir)) {
+    return(tibble())
+  }
   species_dirs <- list.dirs(src_dir, full.names = TRUE, recursive = FALSE)
   tibble(
     species_dir = species_dirs,
@@ -42,27 +48,34 @@ opt_user <- getOption("rlsquiz.user", NA_character_)
 opt_default <- getOption("rlsquiz.default_source", NULL)
 
 # -------- UI --------
-ui <- fluidPage(
-  tags$head(tags$link(rel = "stylesheet", href = "styles.css")),
-  tags$title("RLS Habitat Quiz"),
-  # Simple HUD (no source picker)
-  div(
-    class = "topbar",
-    div(
-      class = "right",
-      conditionalPanel(
-        condition = sprintf("'%s' === 'quiz'", opt_mode),
-        span(class = "hud", "Q: ", textOutput("qnum", inline = TRUE)),
-        span(class = "hud-sep", " "),
-        span(class = "hud", "Score: ", textOutput("score_text", inline = TRUE))
-      )
+ui <- page_sidebar(
+  theme = bs_theme(
+    bg = "#004d4d",
+    fg = "#f4f8ff",
+    primary = "#008080"
+  ),
+
+  sidebar = sidebar(
+    # title = "Photo Source",
+    bg = "#e8f4f8", # Light blue background
+    fg = "#0b2a56", # Dark blue text
+    uiOutput("source_selector_ui"),
+    conditionalPanel(
+      condition = sprintf("'%s' === 'quiz'", opt_mode),
+      h5("Quiz Progress"),
+      p(strong("Question: "), textOutput("qnum", inline = TRUE)),
+      p(strong("Score: "), textOutput("score_text", inline = TRUE))
     )
   ),
-  h2("RLS Habitat Identification Quiz", class = "app-title"),
+
+  # Custom CSS
+  tags$head(tags$link(rel = "stylesheet", href = "styles.css")),
+
   # Main content
+  h2("RLS Habitat Identification Quiz", class = "app-title"),
   div(
     class = "wrap",
-    uiOutput("status_ui"), # status/errors shown here if needed
+    uiOutput("status_ui"),
     uiOutput("image_ui"),
     uiOutput("options_ui"),
     div(
@@ -77,13 +90,91 @@ server <- function(input, output, session) {
   # Determine photos root (bundled or external)
   external_root <- getOption("rlsquiz.photos_root", NULL)
   if (is.null(external_root)) {
-    base_dir <- normalizePath(file.path("www", "photos"), mustWork = FALSE)
-    base_path_name <- "photos" # URL path under /www
+    base_dir <- here::here("inst", "app", "www", "photos")
+    base_path_name <- "photos"
   } else {
     base_dir <- normalizePath(external_root, mustWork = FALSE)
     base_path_name <- "userphotos"
     shiny::addResourcePath(base_path_name, base_dir)
   }
+
+  message("[rlsquiz] Using base_dir: ", base_dir)
+  message("[rlsquiz] Directory exists: ", dir.exists(base_dir))
+
+  # Detect available sources
+  available_sources <- reactive({
+    if (!dir.exists(base_dir)) {
+      message("[rlsquiz] base_dir does not exist!")
+      return(character(0))
+    }
+    srcs <- collect_sources(base_dir)
+    message("[rlsquiz] Sources found: ", paste(srcs, collapse = ", "))
+    srcs
+  })
+
+  # Render source selector UI
+  output$source_selector_ui <- renderUI({
+    srcs <- available_sources()
+    if (length(srcs) == 0) {
+      return(NULL)
+    }
+
+    # Determine initial selection
+    initial <- if (!is.null(opt_default) && opt_default %in% srcs) {
+      opt_default
+    } else {
+      srcs[1]
+    }
+
+    if (length(srcs) == 1) {
+      # Just show the name if only one option
+      p(strong("Source: "), srcs[1])
+    } else {
+      # Show dropdown for multiple sources
+      selectInput(
+        "source_select",
+        label = "Photo Source:",
+        choices = srcs,
+        selected = initial
+      )
+    }
+  })
+
+  # Choose source function
+  choose_source <- function() {
+    srcs <- available_sources()
+    if (length(srcs) == 0) {
+      return(NULL)
+    }
+
+    if (!is.null(opt_default) && opt_default %in% srcs) {
+      return(opt_default)
+    }
+    srcs[1]
+  }
+
+  # React to source changes
+  observeEvent(
+    input$source_select,
+    {
+      req(input$source_select)
+      message("[rlsquiz] Source changed to: ", input$source_select)
+      rv$current_source <- input$source_select
+
+      # Reset quiz state when changing sources
+      if (opt_mode == "quiz") {
+        rv$score <- 0L
+        rv$total <- 0L
+        rv$finished <- FALSE
+      }
+
+      if (build_bank()) {
+        next_question()
+      }
+    },
+    ignoreNULL = TRUE,
+    ignoreInit = TRUE
+  )
 
   # Status helpers
   show_status <- function(msg) {
@@ -95,17 +186,6 @@ server <- function(input, output, session) {
     })
   }
   clear_status <- function() output$status_ui <- renderUI(NULL)
-
-  message("[rlsquiz] Using base_dir: ", base_dir)
-
-  # Fixed, non-reactive choice of source (decided once)
-  choose_source <- function() {
-    if (!dir.exists(base_dir)) return(NULL)
-    srcs <- collect_sources(base_dir)
-    message("[rlsquiz] Sources found: ", paste(srcs, collapse = ", "))
-    if (!length(srcs)) return(NULL)
-    if (!is.null(opt_default) && opt_default %in% srcs) opt_default else srcs[1]
-  }
 
   # App state
   rv <- reactiveValues(
@@ -247,9 +327,12 @@ server <- function(input, output, session) {
         lab <- rv$options$species_lab[i]
         cls <- "opt-btn"
         if (rv$answered) {
-          if (rv$options$correct[i]) cls <- paste(cls, "is-correct")
-          if (!rv$options$correct[i] && identical(lab, rv$chosen_label))
+          if (rv$options$correct[i]) {
+            cls <- paste(cls, "is-correct")
+          }
+          if (!rv$options$correct[i] && identical(lab, rv$chosen_label)) {
             cls <- paste(cls, "is-wrong")
+          }
         }
         actionButton(paste0("opt_", i), lab, class = cls)
       })
@@ -263,7 +346,9 @@ server <- function(input, output, session) {
       observeEvent(
         input[[paste0("opt_", i)]],
         {
-          if (isTRUE(rv$answered) || isTRUE(rv$finished)) return(NULL)
+          if (isTRUE(rv$answered) || isTRUE(rv$finished)) {
+            return(NULL)
+          }
           rv$answered <- TRUE
           rv$chosen_label <- rv$options$species_lab[i]
           if (isTRUE(rv$options$correct[i]) && opt_mode == "quiz") {
@@ -276,9 +361,13 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$next_btn, {
-    if (isTRUE(rv$finished)) return(invisible(NULL))
+    if (isTRUE(rv$finished)) {
+      return(invisible(NULL))
+    }
     if (opt_mode == "quiz") {
-      if (!isTRUE(rv$answered)) return(invisible(NULL))
+      if (!isTRUE(rv$answered)) {
+        return(invisible(NULL))
+      }
       rv$total <- rv$total + 1L
     }
     next_question()
@@ -294,7 +383,9 @@ server <- function(input, output, session) {
 
   # Results modal + optional CSV
   show_results <- function() {
-    if (opt_mode != "quiz") return(invisible(NULL))
+    if (opt_mode != "quiz") {
+      return(invisible(NULL))
+    }
     percent <- round(100 * rv$score / rv$target)
     showModal(modalDialog(
       title = "Quiz complete",
