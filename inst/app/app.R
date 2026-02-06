@@ -49,7 +49,6 @@ opt_default <- getOption("rlsquiz.default_source", NULL)
 
 # -------- UI --------
 ui <- page_sidebar(
-  title = "RLS Habitat Quiz",
   theme = bs_theme(
     bg = "#004d4d",
     fg = "#f4f8ff",
@@ -57,11 +56,10 @@ ui <- page_sidebar(
   ),
 
   sidebar = sidebar(
-    title = "Settings",
+    # title = "Photo Source",
     bg = "#e8f4f8", # Light blue background
     fg = "#0b2a56", # Dark blue text
     uiOutput("source_selector_ui"),
-    hr(),
     conditionalPanel(
       condition = sprintf("'%s' === 'quiz'", opt_mode),
       h5("Quiz Progress"),
