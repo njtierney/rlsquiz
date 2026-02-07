@@ -7,18 +7,85 @@ library(dplyr)
 library(tidyr)
 library(here)
 
+# -------- GitHub image repository --------
+github_base <- function(
+  user = "njtierney",
+  repo = "rlsquiz-images",
+  branch = "main"
+) {
+  sprintf("https://raw.githubusercontent.com/%s/%s/%s", user, repo, branch)
+}
+
+# Load the image index from GitHub
+load_github_index <- function() {
+  url <- paste0(github_base(), "/index.csv")
+  tryCatch(
+    {
+      idx <- read.csv(url, stringsAsFactors = FALSE)
+      message("[rlsquiz] Loaded ", nrow(idx), " images from GitHub index")
+      idx
+    },
+    error = function(e) {
+      message("[rlsquiz] Failed to load GitHub index: ", e$message)
+      data.frame(
+        source = character(),
+        species = character(),
+        filename = character(),
+        stringsAsFactors = FALSE
+      )
+    }
+  )
+}
+
 # -------- helpers --------
 valid_ext <- c("jpg", "jpeg", "png", "webp", "JPG")
 nice_species <- function(x) gsub("_", " ", x, fixed = TRUE)
 
-collect_sources <- function(base_dir) {
+collect_sources <- function(base_dir = NULL, github_index = NULL) {
+  # If using GitHub images
+  if (is.null(base_dir) || base_dir == "GITHUB") {
+    if (is.null(github_index) || nrow(github_index) == 0) {
+      return(character(0))
+    }
+    return(sort(unique(github_index$source)))
+  }
+
+  # Otherwise use local directory
   if (!dir.exists(base_dir)) {
     return(character(0))
   }
   list.dirs(base_dir, full.names = FALSE, recursive = FALSE) |> sort()
 }
 
-collect_items <- function(base_dir, source) {
+collect_items <- function(base_dir, source, github_index = NULL) {
+  # If using GitHub images
+  if (base_dir == "GITHUB") {
+    if (is.null(github_index)) {
+      return(tibble())
+    }
+    idx <- github_index[github_index$source == source, ]
+
+    if (nrow(idx) == 0) {
+      return(tibble())
+    }
+
+    return(tibble(
+      species_key = idx$species,
+      species_lab = nice_species(idx$species),
+      filename = idx$filename,
+      images = paste0(
+        github_base(),
+        "/",
+        source,
+        "/",
+        idx$species,
+        "/",
+        idx$filename
+      )
+    ))
+  }
+
+  # Local directory
   src_dir <- file.path(base_dir, source)
   if (!dir.exists(src_dir)) {
     return(tibble())
@@ -36,6 +103,11 @@ collect_items <- function(base_dir, source) {
 }
 
 img_src <- function(base_path_name, source, species_key, filename) {
+  # If using GitHub, return the full URL
+  if (base_path_name == "GITHUB") {
+    return(paste0(github_base(), "/", source, "/", species_key, "/", filename))
+  }
+  # Local files
   file.path(base_path_name, source, species_key, filename)
 }
 
@@ -87,27 +159,51 @@ ui <- page_sidebar(
 
 # -------- server --------
 server <- function(input, output, session) {
-  # Determine photos root (bundled or external)
+  # Determine photos source: GitHub (default) or local
   external_root <- getOption("rlsquiz.photos_root", NULL)
-  if (is.null(external_root)) {
-    base_dir <- here::here("inst", "app", "www", "photos")
-    base_path_name <- "photos"
-  } else {
+  use_github <- getOption("rlsquiz.use_github", TRUE) # Default to GitHub
+
+  if (!is.null(external_root)) {
+    # Explicit local path provided
     base_dir <- normalizePath(external_root, mustWork = FALSE)
     base_path_name <- "userphotos"
     shiny::addResourcePath(base_path_name, base_dir)
+    message("[rlsquiz] Using local photos: ", base_dir)
+  } else if (use_github) {
+    # Use GitHub images
+    base_dir <- "GITHUB"
+    base_path_name <- "GITHUB"
+    message("[rlsquiz] Using GitHub images from: ", github_base())
+  } else {
+    # Fallback to bundled local images
+    base_dir <- here::here("inst", "app", "www", "photos")
+    base_path_name <- "photos"
+    message("[rlsquiz] Using bundled photos: ", base_dir)
   }
 
-  message("[rlsquiz] Using base_dir: ", base_dir)
-  message("[rlsquiz] Directory exists: ", dir.exists(base_dir))
+  # Load GitHub index once at startup if using GitHub
+  github_index <- if (base_dir == "GITHUB") load_github_index() else NULL
+
+  message("[rlsquiz] base_dir: ", base_dir)
+  if (base_dir != "GITHUB") {
+    message("[rlsquiz] Directory exists: ", dir.exists(base_dir))
+  }
 
   # Detect available sources
   available_sources <- reactive({
+    # Handle GitHub separately - don't check dir.exists
+    if (base_dir == "GITHUB") {
+      srcs <- collect_sources(base_dir, github_index)
+      message("[rlsquiz] Sources found: ", paste(srcs, collapse = ", "))
+      return(srcs)
+    }
+
+    # For local directories, check if exists
     if (!dir.exists(base_dir)) {
       message("[rlsquiz] base_dir does not exist!")
       return(character(0))
     }
-    srcs <- collect_sources(base_dir)
+    srcs <- collect_sources(base_dir, github_index)
     message("[rlsquiz] Sources found: ", paste(srcs, collapse = ", "))
     srcs
   })
@@ -211,7 +307,7 @@ server <- function(input, output, session) {
       show_status("No sources found under the photos directory.")
       return(FALSE)
     }
-    items <- collect_items(base_dir, rv$current_source)
+    items <- collect_items(base_dir, rv$current_source, github_index)
     if (nrow(items) == 0) {
       show_status(HTML(paste0(
         "No images found for source <b>",
